@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang='en'>
+<head>
+  <style>
+    body{
+      margin:0;
+      background:black;
+    }
+    canvas{
+      width:100%; height:100%; position:relative;
+    }
+  </style>
+  <script type="text/javascript" src="misc/dat.gui.js"></script>
+</head>
+
+<body>
+<canvas></canvas>
+</body>
+<script id="vshader" type="whatever">
+  precision mediump float;
+  attribute vec2 a_position;
+  void main() {
+    gl_Position = vec4( a_position, 0, 1.0);
+  }
+</script>
+
+<script id="fshader_draw" type="whatever">
+  precision mediump float;
+  uniform sampler2D state;
+  uniform vec2 scale;
+  uniform float r;
+  uniform float g;
+  uniform float b;
+
+  void main() {
+    vec4 color = texture2D(state, gl_FragCoord.xy / scale);
+    gl_FragColor = vec4( r-color.x, g-color.x, b-color.x, 1. );
+  }
+</script>
+
+<script id="fshader_render" type="whatever">
+  precision mediump float;
+  uniform sampler2D state;
+  uniform vec2 scale;
+  //float f=.0545, k=.062, dA = 1., dB = 0.; // coral preset
+  //uniform float f = .0457, k = .0635, dA = 1., dB = .5;
+  uniform float f, k, dA, dB;
+  uniform float div, time;
+  uniform float l1,l2;
+
+  vec2 get(int x, int y) {
+    return texture2D( state, ( gl_FragCoord.xy + vec2(x, y) ) / scale ).rg;
+  }
+
+  vec2 run() {
+    vec2 state = get( 0, 0 );
+    float a = state.r;
+    float b = state.g;
+    float sumA = a * -1.;
+    float sumB = b * -1.;
+
+    float newF = f + (sin(time / (l1*l2)) / div);
+
+    sumA += get(-1,0).r * .2;
+    sumA += get(-1,-1).r * .05;
+    sumA += get(0,-1).r * .2;
+    sumA += get(1,-1).r * .05;
+    sumA += get(1,0).r * .2;
+    sumA += get(1,1).r * .05;
+    sumA += get(0,1).r * .2;
+    sumA += get(-1,1).r * .05;
+
+    sumB += get(-1,0).g * .2;
+    sumB += get(-1,-1).g * .05;
+    sumB += get(0,-1).g * .2;
+    sumB += get(1,-1).g * .05;
+    sumB += get(1,0).g * .2;
+    sumB += get(1,1).g * .05;
+    sumB += get(0,1).g * .2;
+    sumB += get(-1,1).g * .05;
+
+    state.r = a + dA
+      * sumA -
+      a * b * b +
+      f * (1. - a);
+
+    state.g = b + dB *
+      sumB +
+      a * b * b -
+      ((k+newF) * b);
+
+    return state;
+  }
+  void main() {
+    vec2 nextState = run();
+    gl_FragColor = vec4( nextState.r, nextState.g, 0., 1. );
+  }
+</script>
+<script>
+  window.onload = function() {
+    let canvas = document.querySelector( 'canvas' )
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+    let gl = canvas.getContext( 'webgl' )
+    let stateSize = Math.pow( 2, Math.floor(Math.log(canvas.width)/Math.log(2)) )
+
+    let verts = [
+      1, 1,
+      -1, 1,
+      -1,-1,
+      1, 1,
+      -1, -1,
+      1, -1,
+    ]
+
+    let vertBuffer = gl.createBuffer()
+    gl.bindBuffer( gl.ARRAY_BUFFER, vertBuffer )
+    gl.bufferData( gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW )
+    gl.vertexAttribPointer( 0, 2, gl.FLOAT, false, 0, 0 )
+    gl.enableVertexAttribArray( 0 )
+
+    let shaderScript = document.getElementById( 'vshader' )
+    let shaderSource = shaderScript.text
+    const vertexShader = gl.createShader( gl.VERTEX_SHADER )
+    gl.shaderSource( vertexShader, shaderSource )
+    gl.compileShader( vertexShader )
+    console.log( gl.getShaderInfoLog( vertexShader ) ) // create fragment shader to run our simulation
+
+    shaderScript = document.getElementById( 'fshader_render' )
+    shaderSource = shaderScript.text
+    const fragmentShaderRender = gl.createShader( gl.FRAGMENT_SHADER )
+    gl.shaderSource( fragmentShaderRender, shaderSource )
+    gl.compileShader( fragmentShaderRender )
+    console.log( gl.getShaderInfoLog( fragmentShaderRender ) ) // create shader program const
+
+    programRender = gl.createProgram()
+    gl.attachShader( programRender, vertexShader )
+    gl.attachShader( programRender, fragmentShaderRender )
+    gl.linkProgram( programRender )
+    gl.useProgram( programRender )
+
+    // create pointer to vertex array and uniform sharing simulation size
+    const position = gl.getAttribLocation( programRender, 'a_position' )
+    gl.enableVertexAttribArray( position )
+    gl.vertexAttribPointer( position, 2, gl.FLOAT, false, 0,0 )
+    let scale = gl.getUniformLocation( programRender, 'scale' )
+    gl.uniform2f( scale, stateSize, stateSize )
+
+    // create shader program to draw our simulation to the screen
+    shaderScript = document.getElementById( 'fshader_draw' )
+    shaderSource = shaderScript.text
+    fragmentShaderDraw = gl.createShader( gl.FRAGMENT_SHADER )
+    gl.shaderSource( fragmentShaderDraw, shaderSource )
+    gl.compileShader( fragmentShaderDraw )
+    console.log( gl.getShaderInfoLog( fragmentShaderDraw ) )
+
+    let params = function() {
+      this.f = 0.07;
+      this.k = 0.06;
+      this.dA = 1.0;
+      this.dB = 0.5;
+      this.R = 1.0;
+      this.G = 1.0;
+      this.B = 1.0;
+      this.dividend = 148.;
+      this.L1 = 4.9;
+      this.L2 = 4.8;
+    };
+    modifiers = new params();
+    gui = new dat.GUI();
+    gui.add(modifiers, 'f', .02, .07);
+    gui.add(modifiers, 'k', .02, .065);
+    gui.add(modifiers, 'dA', .5, 1.);
+    gui.add(modifiers, 'dB', .25, .68);
+    gui.add(modifiers, 'R', 0., 1.);
+    gui.add(modifiers, 'G', 0., 1.);
+    gui.add(modifiers, 'B', 0., 1.);
+    gui.add(modifiers, 'dividend', 120., 200.);
+    gui.add(modifiers, 'L1', 4., 5.);
+    gui.add(modifiers, 'L2', 4., 5.);
+
+
+    // create shader program
+    programDraw = gl.createProgram()
+    gl.attachShader( programDraw, vertexShader )
+    gl.attachShader( programDraw, fragmentShaderDraw )
+    gl.linkProgram( programDraw )
+    gl.useProgram( programDraw )
+
+    scale = gl.getUniformLocation( programDraw, 'scale' )
+    gl.uniform2f( scale, canvas.width,canvas.height )
+    const position2 = gl.getAttribLocation( programDraw, 'a_position' )
+    gl.enableVertexAttribArray( position2 )
+    gl.vertexAttribPointer( position2, 2, gl.FLOAT, false, 0,0 )
+
+    // enable floating point textures in the browser
+    gl.getExtension('OES_texture_float');
+
+    let texFront = gl.createTexture()
+    gl.bindTexture( gl.TEXTURE_2D, texFront )
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT )
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT )
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST )
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST )
+    gl.texImage2D( gl.TEXTURE_2D, 0, gl.RGBA, stateSize, stateSize, 0, gl.RGBA, gl.FLOAT, null )
+
+    let texBack = gl.createTexture()
+    gl.bindTexture( gl.TEXTURE_2D, texBack )
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT )
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT )
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST )
+    gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST )
+    gl.texImage2D( gl.TEXTURE_2D, 0, gl.RGBA, stateSize, stateSize, 0, gl.RGBA, gl.FLOAT, null )
+
+    r = gl.getUniformLocation( programDraw, 'r' )
+    g = gl.getUniformLocation( programDraw, 'g' )
+    b = gl.getUniformLocation( programDraw, 'b' )
+
+    f = gl.getUniformLocation( programRender, 'f' )
+    k = gl.getUniformLocation( programRender, 'k' )
+    dA = gl.getUniformLocation( programRender, 'dA' )
+    dB = gl.getUniformLocation( programRender, 'dB' )
+    t = gl.getUniformLocation( programRender, 'time' )
+    d = gl.getUniformLocation( programRender, 'div' )
+    l1 = gl.getUniformLocation( programRender, 'l1' )
+    l2 = gl.getUniformLocation( programRender, 'l2' )
+
+    const pixelSize = 4
+    const feedSize = 48
+    const initState = new Float32Array( stateSize * stateSize * pixelSize )
+    const reset = function() {
+      for( let i = 0; i < stateSize; i++ ) {
+        for( let j = 0; j < stateSize * pixelSize; j+= pixelSize ) {
+          // this will be our 'a' value in the simulation
+          initState[ i * stateSize * pixelSize + j ] = 1
+          // selectively add 'b' value to middle of screen
+          if( i > stateSize / 2 - stateSize / feedSize  && i < stateSize / 2 + stateSize / feedSize ) {
+            const xmin = j > (stateSize*pixelSize) / 2 - stateSize / feedSize
+            const xmax = j < (stateSize*pixelSize) / 2 + (stateSize*pixelSize) / feedSize
+            if( xmin && xmax ) {
+              initState[ i * stateSize * pixelSize + j + 1 ] = 1
+            }
+          }
+        }
+      }
+
+      gl.texSubImage2D(
+              gl.TEXTURE_2D, 0, 0, 0, stateSize, stateSize, gl.RGBA, gl.FLOAT, initState, 0
+      )
+    }
+
+    reset()
+
+    const fb = gl.createFramebuffer()
+    const fb2 = gl.createFramebuffer()
+
+    const pingpong = function() {
+      gl.bindFramebuffer( gl.FRAMEBUFFER, fb )
+      // use the framebuffer to write to our texFront texture
+      gl.framebufferTexture2D( gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texFront, 0 )
+      // set viewport to be the size of our state (reaction diffusion simulation)
+      // here, this represents the size that will be drawn onto our texture
+      gl.viewport(0, 0, stateSize, stateSize )
+      // in our shaders, read from texBack, which is where we poked to
+      gl.bindTexture( gl.TEXTURE_2D, texBack ) // run shader
+      gl.drawArrays( gl.TRIANGLES, 0, 6 )
+
+      gl.bindFramebuffer( gl.FRAMEBUFFER, fb2 )
+      gl.framebufferTexture2D( gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texBack, 0 )
+      // set our viewport to be the size of our canvas
+      // so that it will fill it entirely
+      gl.viewport(0, 0, canvas.width, canvas.height )
+      // select the texture we would like to draw the the screen.
+      // note that webgl does not allow you to write to / read from the
+      // same texture in a single render pass. Because of the swap, we're
+      // displaying the state of our simulation ****before**** this render pass (frame)
+      gl.bindTexture( gl.TEXTURE_2D, texFront )
+      // put simulation on screen
+      gl.drawArrays( gl.TRIANGLES, 0, 6 )
+    }
+
+    let time = 0;
+
+    const draw = function() {
+      gl.useProgram( programRender )
+
+      time++
+
+      gl.uniform1f(f, modifiers.f)
+      gl.uniform1f(k, modifiers.k)
+      gl.uniform1f(dA, modifiers.dA)
+      gl.uniform1f(dB, modifiers.dB)
+      gl.uniform1f(t, time);
+      gl.uniform1f(d, modifiers.dividend)
+      gl.uniform1f(l1, modifiers.L1)
+      gl.uniform1f(l2, modifiers.L2)
+
+      for( let i = 0; i < 12; i++ ) pingpong()
+
+      // use the default framebuffer object by passing null
+      gl.bindFramebuffer( gl.FRAMEBUFFER, null )
+      // set our viewport to be the size of our canvas
+      // so that it will fill it entirely
+      gl.viewport(0, 0, canvas.width, canvas.height )
+      // select the texture we would like to draw the the screen.
+      gl.bindTexture( gl.TEXTURE_2D, texBack )
+      // use our drawing (copy) shader
+      gl.useProgram( programDraw )
+
+      gl.uniform1f(r, modifiers.R)
+      gl.uniform1f(g, modifiers.G)
+      gl.uniform1f(b, modifiers.B)
+
+      // put simulation on screen
+      gl.drawArrays( gl.TRIANGLES, 0, 6 )
+
+      window.requestAnimationFrame( draw )
+    }
+
+    draw()
+  }
+
+</script>
+</html>

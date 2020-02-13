@@ -1,0 +1,20 @@
+body {
+    background-color: black;
+    display: flex;
+    align-items: center;
+    height: 100%;
+}
+
+#container p, h1, h2, h3, small {
+    color:white;
+}
+
+i {
+    color:white;
+    padding:2rem;
+}
+
+#container {
+    justify-content: center;
+    align-items: center;
+}
