@@ -59,8 +59,6 @@
     float sumA = a * -1.;
     float sumB = b * -1.;
 
-    float newF = f + (sin(time / (l1*l2)) / div);
-
     sumA += get(-1,0).r * .2;
     sumA += get(-1,-1).r * .05;
     sumA += get(0,-1).r * .2;
@@ -79,6 +77,8 @@
     sumB += get(0,1).g * .2;
     sumB += get(-1,1).g * .05;
 
+    float dF = f + (sin(time / (l1*l2)) / div);
+
     state.r = a + dA
       * sumA -
       a * b * b +
@@ -87,7 +87,7 @@
     state.g = b + dB *
       sumB +
       a * b * b -
-      ((k+newF) * b);
+      ((k+dF) * b);
 
     return state;
   }
