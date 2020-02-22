@@ -3,9 +3,9 @@ const glslify = require( 'glslify' )
 
 window.onload = function() {
   let canvas = document.querySelector( 'canvas' )
-  let gl = canvas.getContext( 'webgl' )
   canvas.width = window.innerWidth
   canvas.height = window.innerHeight
+  let gl = canvas.getContext( 'webgl' )
   let stateSize = Math.pow( 2, Math.floor(Math.log(canvas.width)/Math.log(2)) )
 
   let verts = [
@@ -29,7 +29,7 @@ window.onload = function() {
   gl.compileShader( vertexShader )
   console.log( gl.getShaderInfoLog( vertexShader ) ) // create fragment shader to run our simulation
 
-  shaderSource = glslify(["precision highp float;\n#define GLSLIFY 1\nuniform sampler2D state;\nuniform vec2 scale;\n\nfloat ALPHA_M = 0.157;\nfloat ALPHA_N = 0.038;\n\n/*\nfloat birth_lo = 0.278;\nfloat birth_hi = 0.365;\nfloat death_lo = 0.267;\nfloat death_hi = 0.445;\n*/\n\nfloat birth_lo = 0.280;\nfloat birth_hi = 0.350;\nfloat death_lo = 0.360;\nfloat death_hi = 0.550;\n\nfloat b = 1.0;\nfloat PI = 3.14159265358979323846264;\n\nconst float R_outer = 9.0;\nconst float R_inner = 3.0;\n\nfloat sigma(float x, float a, float alpha) {\n    return 1.0 / (1.0 + exp(-4.0 * (x-a) / alpha));\n}\n\nfloat sigma_n(float x, float a, float b) {\n    return sigma(x, a, ALPHA_N) * (1.0 - sigma(x, b, ALPHA_N));\n}\n\nfloat sigma_m(float x, float y, float m) {\n    float weight = sigma(m, 0.5, ALPHA_M);\n    return x * (1.0-weight) + y * weight;\n}\n\nfloat s(float n, float m) {\n    return sigma_n(n,\n                   sigma_m(birth_lo, death_lo, m),\n                   sigma_m(birth_hi, death_hi, m));\n}\n\nfloat f(vec2 p) {\n    vec2 st = (vec2(gl_FragCoord.xy) + p) / scale;\n    return texture2D( state, st ).w;\n}\n\nvoid main() {\n\n  float m = 0.0;\n  float n = 0.0;\n    \n  float inner = PI * R_inner * R_inner;\n  float outer = PI * (R_outer*R_outer - R_inner*R_inner);\n    \n  for(float i = -R_outer; i <= R_outer; i++) {\n      for(float j = -R_outer; j <= R_outer; j++) {\n          \n          float dist = sqrt(float(i*i + j*j));\n          float val = f(vec2(i,j));\n          \n          if(dist < R_inner) {\n              m += val;\n          }\n          else if(dist <= R_inner) {\n              m += val * (R_inner - dist + 0.5);\n          }\n          \n          if(dist < R_outer) {\n              if(dist > R_inner) {\n                  n += val;\n              }\n              else if(dist >= R_inner) {\n                  n += val * (R_inner - dist + 0.5);\n              }\n          }\n          else if(dist <= R_outer) {\n              n += val * (R_outer - dist + 0.5);\n          }\n      }\n  }\n\n  float sM = m / inner;\n  float sN = n / outer;\n    \n  gl_FragColor = vec4( sin(s(sN,sM) * 150. * PI), sin(s(sN,sM) * 200. * PI), sin(s(sN,sM) * PI) , s(sN,sM));\n\n}\n"])
+  shaderSource = glslify(["precision highp float;\n#define GLSLIFY 1\nuniform sampler2D state;\nuniform vec2 scale;\nuniform float time;\n\nfloat ALPHA_M = 0.157;\nfloat ALPHA_N = 0.038;\n\nfloat birth_lo = 0.280;\nfloat birth_hi = 0.350;\nfloat death_lo = 0.360;\nfloat death_hi = 0.550;\n\nfloat PI = 3.14159265358979323846264;\n\nconst float R_outer = 9.0;\nconst float R_inner = 3.0;\n\nfloat sigma(float x, float a, float alpha) {\n    return 1.0 / (1.0 + exp(-4.0 * (x-a) / alpha));\n}\n\nfloat sigma_n(float x, float a, float b) {\n    return sigma(x, a, ALPHA_N) * (1.0 - sigma(x, b, ALPHA_N));\n}\n\nfloat sigma_m(float x, float y, float m) {\n    float weight = sigma(m, 0.5, ALPHA_M);\n    return x * (1.0-weight) + y * weight;\n}\n\nfloat s(float n, float m) {\n    return sigma_n(n,\n                   sigma_m(birth_lo, death_lo, m),\n                   sigma_m(birth_hi, death_hi, m));\n}\n\nfloat f(vec2 p) {\n    vec2 st = (vec2(gl_FragCoord.xy) + p) / scale;\n    return texture2D( state, st ).w;\n}\n\nvoid main() {\n  float m, n = 0.0;\n    \n  for(float i = -R_outer; i <= R_outer; i++) {\n      for(float j = -R_outer; j <= R_outer; j++) {\n          float dist = sqrt(float(i*i + j*j));\n          float s = f(vec2(i,j));\n          \n          if(dist < R_inner) {\n              m += s;\n          }\n          else if(dist <= R_inner) {\n              m += s * (R_inner - dist + 0.5);\n          }\n          \n          if(dist < R_outer) {\n              if(dist > R_inner) {\n                  n += s;\n              }\n              else if(dist >= R_inner) {\n                  n += s * (R_inner - dist + 0.5);\n              }\n          }\n          else if(dist <= R_outer) {\n              n += s * (R_outer - dist + 0.5);\n          }\n      }\n  }\n    \n  float inner = PI * R_inner * R_inner;\n  float outer = PI * (R_outer*R_outer - R_inner*R_inner);\n\n  float sM = m / inner;\n  float sN = n / outer;\n    \n  gl_FragColor = vec4(100. * sin(PI) * s(sN,sM), s(sN,sM), 100. * sin(PI) * s(sN,sM) , s(sN,sM));\n}\n"])
   const fragmentShaderRender = gl.createShader( gl.FRAGMENT_SHADER )
   gl.shaderSource( fragmentShaderRender, shaderSource )
   gl.compileShader( fragmentShaderRender )
@@ -50,7 +50,7 @@ window.onload = function() {
   gl.uniform2f( scale, stateSize, stateSize )
 
   // create shader program to draw our simulation to the screen
-  shaderSource = glslify(["precision mediump float;\n#define GLSLIFY 1\nuniform sampler2D state;\nuniform vec2 scale;\n\nvoid main() {\n  vec4 color = texture2D(state, gl_FragCoord.xy / scale);\n  gl_FragColor = vec4( color.rgb, 1. );\n}\n"])
+  shaderSource = glslify(["precision mediump float;\n#define GLSLIFY 1\nuniform sampler2D state;\nuniform vec2 scale;\n\nvoid main() {\n  vec4 color = texture2D(state, gl_FragCoord.xy / scale);\n  gl_FragColor = vec4( color.r, color.g, color.b, 1. ); \n}\n"])
   fragmentShaderDraw = gl.createShader( gl.FRAGMENT_SHADER )
   gl.shaderSource( fragmentShaderDraw, shaderSource )
   gl.compileShader( fragmentShaderDraw )
@@ -64,7 +64,7 @@ window.onload = function() {
   gl.useProgram( programDraw )
 
   scale = gl.getUniformLocation( programDraw, 'scale' )
-  gl.uniform2f( scale, stateSize,stateSize )
+  gl.uniform2f( scale, stateSize, stateSize )
   const position2 = gl.getAttribLocation( programDraw, 'a_position' )
   gl.enableVertexAttribArray( position2 )
   gl.vertexAttribPointer( position2, 2, gl.FLOAT, false, 0,0 )
@@ -87,6 +87,8 @@ window.onload = function() {
   gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST )
   gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST )
   gl.texImage2D( gl.TEXTURE_2D, 0, gl.RGBA, stateSize, stateSize, 0, gl.RGBA, gl.FLOAT, null )
+
+  t = gl.getUniformLocation( programRender, 'time' )
 
   const pixelSize = 4
   const initState = new Float32Array( stateSize * stateSize * pixelSize )
@@ -131,10 +133,13 @@ window.onload = function() {
     gl.drawArrays( gl.TRIANGLES, 0, 6 )
   }
 
-  const render = function() {
-    window.requestAnimationFrame( render )
+  let time = 0;
 
+  const render = function() {
     gl.useProgram( programRender )
+
+    time++;
+    gl.uniform1f(t, time);
 
     pingpong()
 
@@ -151,8 +156,8 @@ window.onload = function() {
     // put simulation on screen
     gl.drawArrays( gl.TRIANGLES, 0, 6 )
 
+    window.requestAnimationFrame( render )
   }
-
   render()
 }
 
