@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="misc/style.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+    <title>Final Assignment</title>
+</head>
+<body>
+<div id="container">
+    <h2>Final Assignment</h2>
+    <a href="final/index.html">click here for full screen simulation (currently at key B pattern)</a>
+    <br><br>
+    <iframe width="560" height="315" src="https://www.youtube.com/embed/qajvcZnuLF8" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    <br><br>
+    <p>
+        For this assignment, I decided to add control features to and optimize one of my previous assignments. I used the Smooth Life simulation and connected it to a MIDI controller. In my original Smooth Life assignment, I mentioned that if I had more time, I would have included color controls in the simulation. So, I thought it would be cool to link MIDI keys to different color values.
+    </p>
+    <br>
+        <p>(C Key): </p>
+        <img src="misc/green.png" width="33%" height="33%">
+    <br><br>
+    <p>
+        So, the C key input is the default. Whenever the simulation is in a different state, you can use the key to get back to the default state. With different keys, I tested color patterns with trigonometric time functions and octave data.
+    </p>
+        <p>(E Key): </p>
+        <img src="misc/blue.png" width="33%" height="33%">
+        <br><br>
+        <p>(F Key): </p>
+        <img src="misc/red.png" width="33%" height="33%">
+        <br><br>
+        <p>(B Key): </p>
+    <iframe width="560" height="315" src="https://www.youtube.com/embed/E1cDpfU_Vps" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    <br><br>
+    <p>
+        The octave data (from 1 to 7) can also be passed as a uniform to register changes for the same letter but different octaves like D2 and D3.
+    </p>
+    <p>
+        (Difference between D3 and D5):
+        Here, you can see the difference between same color but different octaves. On 5th octave, the outline is way thicker and the background color converges to the blue outline color of the cell clusters. On 3rd octave, the outline gets only slightly thicker over time.
+    </p>
+    <iframe width="560" height="315" src="https://www.youtube.com/embed/dRgMVXCqzik" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    <iframe width="560" height="315" src="https://www.youtube.com/embed/MQrZskL3pg8" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    <br>
+    <h3>Feedback</h3>
+    <p>
+        The feedback I got was mainly positive. A couple people asked about the 3:1 ratio and approximation process of Smooth Life. I also tested out 1/3 radius values instead of 3/9 (discussed in Assignment 4) and it was unstable. The variety of color options was apparently appealing. I tested multiple color values and patterns to get a good contrast and a few people acknowledged that. Upon suggestion, a further improvement to the simulation could be abstracting the ALPHA or birth, death ranges of cells to control those and modifying the speed of the simulation.
+    </p>
+</div>
+</body>
+</html>
